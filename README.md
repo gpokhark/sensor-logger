@@ -26,6 +26,13 @@ Exports NDJSON:
   `session_<sessionId>_chunk<NN>_<YYYYMMDD_HHMMSSZ>.ndjson`
 - Optional gzip: `.ndjson.gz` using `CompressionStream` if supported.
 
+## NDJSON to CSV converter
+- Open `convert.html` to convert `.ndjson` / `.ndjson.gz` to `.csv` fully client-side.
+- You can access it from the main page via **Open CSV Converter Page**.
+- Supports drag/drop or file picker input.
+- Optional file share path uses the browser Web Share API when available.
+- `.ndjson.gz` input requires `DecompressionStream` support in the browser. If unsupported, use plain `.ndjson`.
+
 ## Deploy
 - Push this folder to GitHub
 - Enable GitHub Pages from the repository settings (deploy from main branch)

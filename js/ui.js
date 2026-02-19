@@ -22,7 +22,11 @@ const el = {
   diag: document.getElementById("diag"),
 
   exportBar: document.getElementById("exportBar"),
-  exportText: document.getElementById("exportText")
+  exportText: document.getElementById("exportText"),
+
+  btnOpenConverter: document.getElementById("btnOpenConverter"),
+  converterLink: document.getElementById("converterLink"),
+
 };
 
 const logger = new SensorLogger({ onState: onLoggerState });
@@ -52,6 +56,16 @@ async function boot() {
   el.btnExportSession.addEventListener("click", onExportSession);
 
   el.btnClear.addEventListener("click", onClear);
+  
+  if (el.btnOpenConverter && el.converterLink) {
+    const converterUrl = new URL("convert.html", location.href).toString();
+    el.converterLink.href = converterUrl;
+    el.converterLink.textContent = converterUrl;
+
+    el.btnOpenConverter.addEventListener("click", () => {
+      window.open(converterUrl, "_blank", "noopener,noreferrer");
+    });
+  }
 
   window.addEventListener("visibilitychange", () => {
     // If page hidden, wake lock may release. State updates handle the flag.

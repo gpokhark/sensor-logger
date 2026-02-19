@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>NDJSON → CSV Converter</title>
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <header class="wrap">
+    <h1>NDJSON → CSV Converter</h1>
+    <p class="muted">Upload or drag/drop .ndjson or .ndjson.gz. Converts fully in-browser.</p>
+  </header>
+
+  <main class="wrap">
+    <section class="card">
+      <h2>File</h2>
+
+      <div id="drop" class="drop">
+        <div class="dropInner">
+          <div class="dropTitle">Drop file here</div>
+          <div class="muted small">or choose a file from your device</div>
+        </div>
+      </div>
+
+      <div class="row">
+        <input id="file" type="file" accept=".ndjson,.gz,.ndjson.gz" />
+        <button id="btnConvert" class="primary" disabled>Convert</button>
+        <button id="btnCancel" disabled>Cancel</button>
+      </div>
+
+      <div class="row">
+        <button id="btnDownload" disabled>Download CSV</button>
+        <button id="btnShare" disabled>Share / Save to Files / Save to Drive</button>
+      </div>
+
+      <div class="row">
+        <label class="checkbox">
+          <input type="checkbox" id="chkPreview" checked />
+          Preview first 50 rows
+        </label>
+      </div>
+
+      <div class="progressWrap">
+        <div class="progressBar"><div id="bar" class="progressFill" style="width:0%"></div></div>
+        <div id="progressText" class="muted">No job running</div>
+      </div>
+
+      <div id="meta" class="muted small"></div>
+    </section>
+
+    <section class="card">
+      <h2>Preview</h2>
+      <div class="tableWrap">
+        <table id="previewTable"></table>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Notes</h2>
+      <ul class="muted small">
+        <li>On iPhone: use <b>Share</b> then pick <b>Save to Files</b> or <b>Save to Drive</b>.</li>
+        <li>On Android: <b>Download</b> saves to Downloads. Then upload to Drive manually.</li>
+        <li>No Google login or APIs needed.</li>
+      </ul>
+    </section>
+  </main>
+
+  <script type="module" src="js/convert/ui.js"></script>
+</body>
+</html>
