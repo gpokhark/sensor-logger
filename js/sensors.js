@@ -18,7 +18,8 @@ export function makeLatestState() {
 
     // flags
     motion_ok: 0,
-    gps_ok: 0
+    gps_ok: 0,
+    motion_src: null
   };
 }
 
@@ -45,20 +46,56 @@ export async function ensureGeoPermissionIfNeeded() {
 }
 
 export function attachMotionAndOrientation(latestState) {
+  let accel = null;
+
+  // Prefer Generic Sensor API Accelerometer when available.
+  if ("Accelerometer" in window) {
+    try {
+      accel = new Accelerometer({ frequency: 100 });
+      accel.addEventListener("reading", () => {
+        const x = finiteOrNull(accel.x);
+        const y = finiteOrNull(accel.y);
+        const z = finiteOrNull(accel.z);
+        latestState.ax = x;
+        latestState.ay = y;
+        latestState.az = z;
+        latestState.ax_g = x;
+        latestState.ay_g = y;
+        latestState.az_g = z;
+        latestState.motion_ok = 1;
+        latestState.motion_src = "accelerometer";
+      });
+      accel.addEventListener("error", () => {});
+      accel.start();
+    } catch {}
+  }
+
   const onMotion = (ev) => {
     const a = ev.acceleration;
     const ag = ev.accelerationIncludingGravity;
     const rr = ev.rotationRate;
 
-    if (a) {
+    // If Accelerometer API is active, it is the source of truth for acceleration values.
+    if (!accel && ag) {
+      latestState.ax = finiteOrNull(ag.x);
+      latestState.ay = finiteOrNull(ag.y);
+      latestState.az = finiteOrNull(ag.z);
+      latestState.motion_src = "devicemotion";
+    } else if (!accel && a) {
+      // Fallback if gravity-included acceleration is unavailable.
       latestState.ax = finiteOrNull(a.x);
       latestState.ay = finiteOrNull(a.y);
       latestState.az = finiteOrNull(a.z);
+      latestState.motion_src = "devicemotion";
     }
-    if (ag) {
+    if (!accel && ag) {
       latestState.ax_g = finiteOrNull(ag.x);
       latestState.ay_g = finiteOrNull(ag.y);
       latestState.az_g = finiteOrNull(ag.z);
+    } else if (!accel && a) {
+      latestState.ax_g = finiteOrNull(a.x);
+      latestState.ay_g = finiteOrNull(a.y);
+      latestState.az_g = finiteOrNull(a.z);
     }
     if (rr) {
       // Some browsers provide alpha/beta/gamma as deg/s
@@ -79,6 +116,9 @@ export function attachMotionAndOrientation(latestState) {
   window.addEventListener("deviceorientation", onOrientation, { passive: true });
 
   return () => {
+    try { accel?.stop(); } catch {}
+    accel = null;
+    latestState.motion_src = null;
     window.removeEventListener("devicemotion", onMotion);
     window.removeEventListener("deviceorientation", onOrientation);
   };

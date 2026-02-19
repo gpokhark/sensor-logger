@@ -30,6 +30,7 @@ const latestState = logger.getLatestStateRef();
 
 let detachMotion = null;
 let geo = null;
+let liveDiagTimer = null;
 
 boot().catch(showErr);
 
@@ -55,6 +56,9 @@ async function boot() {
   window.addEventListener("visibilitychange", () => {
     // If page hidden, wake lock may release. State updates handle the flag.
   });
+
+  startPassiveSensorPreview();
+  startLiveDiagTicker();
 }
 
 async function onStart() {
@@ -90,8 +94,8 @@ async function onStart() {
 async function onStop() {
   try {
     await logger.stop();
-    geo?.stop?.();
-    geo = null;
+    // Keep passive preview running at idle so live values remain visible.
+    startPassiveSensorPreview();
 
     refreshUi(logger.getPublicState());
     enableExportsIfPossible(logger.getPublicState());
@@ -141,6 +145,10 @@ async function onClear() {
   if (!confirm("Delete ALL local sensor logs for this app? This cannot be undone.")) return;
   try {
     await logger.stop().catch(() => {});
+    detachMotion?.();
+    detachMotion = null;
+    geo?.stop?.();
+    geo = null;
     await clearAll();
     location.reload();
   } catch (e) {
@@ -153,6 +161,22 @@ function onLoggerState(state) {
   refreshUi(state);
   enableExportsIfPossible(state);
   renderDiag(state);
+}
+
+function startPassiveSensorPreview() {
+  detachMotion?.();
+  detachMotion = attachMotionAndOrientation(latestState);
+
+  geo?.stop?.();
+  geo = attachGeolocation(latestState);
+  geo.start().catch(() => {});
+}
+
+function startLiveDiagTicker() {
+  if (liveDiagTimer) return;
+  const tick = () => renderDiag(logger.getPublicState());
+  tick();
+  liveDiagTimer = setInterval(tick, 1000);
 }
 
 function refreshUi(st) {
@@ -187,6 +211,7 @@ function renderDiag(st) {
     achieved_hz: st.achieved_hz ?? null,
     wake_lock: st.wake_lock ?? null,
     motion_ok: latestState.motion_ok,
+    motion_src: latestState.motion_src || null,
     gps_ok: latestState.gps_ok,
     last_motion: {
       ax: latestState.ax, ay: latestState.ay, az: latestState.az,

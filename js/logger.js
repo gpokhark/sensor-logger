@@ -7,7 +7,7 @@ import {
   makeSessionId
 } from "./constants.js";
 
-import { putSession, putChunk, addBatch, getMostRecentUnfinishedSession, getChunk } from "./idb.js";
+import { putSession, putChunk, addBatch, getMostRecentUnfinishedSession, getChunk, enforceSingleActiveSession } from "./idb.js";
 import { makeLatestState } from "./sensors.js";
 
 export class SensorLogger {
@@ -20,6 +20,7 @@ export class SensorLogger {
 
     this._samplerTimer = null;
     this._flushTimer = null;
+    this._flushQueue = Promise.resolve();
 
     this._batchBuffer = [];
     this._batchStartSampleIndex = 1;
@@ -78,6 +79,7 @@ export class SensorLogger {
       };
 
       await putSession(this.session);
+      await enforceSingleActiveSession(sessionId);
 
       await putChunk({
         session_id: sessionId,
@@ -94,8 +96,10 @@ export class SensorLogger {
       this._emitState("New session started");
     } else {
       // resumed session: ensure targetHz updated if different
+      this.session.active = 1;
       this.session.target_hz = targetHz;
       await putSession(this.session);
+      await enforceSingleActiveSession(this.session.session_id);
       this._emitState("Resumed session started");
     }
 
@@ -132,6 +136,13 @@ export class SensorLogger {
   }
 
   async flushNow() {
+    const run = this._flushQueue.then(() => this._flushNowInternal());
+    // Keep the queue alive even if one flush fails; callers still receive actual errors via `run`.
+    this._flushQueue = run.catch(() => {});
+    return run;
+  }
+
+  async _flushNowInternal() {
     if (!this.session) return;
     if (this._batchBuffer.length === 0) return;
 
