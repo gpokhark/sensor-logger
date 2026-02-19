@@ -30,6 +30,7 @@ const latestState = logger.getLatestStateRef();
 
 let detachMotion = null;
 let geo = null;
+let liveDiagTimer = null;
 
 boot().catch(showErr);
 
@@ -55,6 +56,9 @@ async function boot() {
   window.addEventListener("visibilitychange", () => {
     // If page hidden, wake lock may release. State updates handle the flag.
   });
+
+  startPassiveSensorPreview();
+  startLiveDiagTicker();
 }
 
 async function onStart() {
@@ -90,10 +94,8 @@ async function onStart() {
 async function onStop() {
   try {
     await logger.stop();
-    detachMotion?.();
-    detachMotion = null;
-    geo?.stop?.();
-    geo = null;
+    // Keep passive preview running at idle so live values remain visible.
+    startPassiveSensorPreview();
 
     refreshUi(logger.getPublicState());
     enableExportsIfPossible(logger.getPublicState());
@@ -159,6 +161,22 @@ function onLoggerState(state) {
   refreshUi(state);
   enableExportsIfPossible(state);
   renderDiag(state);
+}
+
+function startPassiveSensorPreview() {
+  detachMotion?.();
+  detachMotion = attachMotionAndOrientation(latestState);
+
+  geo?.stop?.();
+  geo = attachGeolocation(latestState);
+  geo.start().catch(() => {});
+}
+
+function startLiveDiagTicker() {
+  if (liveDiagTimer) return;
+  const tick = () => renderDiag(logger.getPublicState());
+  tick();
+  liveDiagTimer = setInterval(tick, 1000);
 }
 
 function refreshUi(st) {
