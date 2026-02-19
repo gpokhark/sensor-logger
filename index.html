@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Mobile Sensor Logger</title>
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <header class="wrap">
+    <h1>Mobile Sensor Logger</h1>
+    <p class="muted">Client-side only. Logs to IndexedDB. Exports NDJSON (optionally gzip).</p>
+  </header>
+
+  <main class="wrap grid">
+    <section class="card">
+      <h2>Session</h2>
+
+      <div class="row">
+        <label for="targetHz">Target rate</label>
+        <select id="targetHz">
+          <option value="5">5 Hz</option>
+          <option value="50">50 Hz</option>
+          <option value="100">100 Hz (best effort)</option>
+        </select>
+      </div>
+
+      <div class="row">
+        <button id="btnStart" class="primary">Start</button>
+        <button id="btnStop" disabled>Stop</button>
+      </div>
+
+      <div class="kpis">
+        <div class="kpi">
+          <div class="kpiLabel">Session ID</div>
+          <div id="kpiSessionId" class="kpiValue">—</div>
+        </div>
+        <div class="kpi">
+          <div class="kpiLabel">Chunk</div>
+          <div id="kpiChunk" class="kpiValue">—</div>
+        </div>
+        <div class="kpi">
+          <div class="kpiLabel">Rows in chunk</div>
+          <div id="kpiRows" class="kpiValue">—</div>
+        </div>
+        <div class="kpi">
+          <div class="kpiLabel">Achieved Hz</div>
+          <div id="kpiAchieved" class="kpiValue">—</div>
+        </div>
+        <div class="kpi">
+          <div class="kpiLabel">Wake lock</div>
+          <div id="kpiWakeLock" class="kpiValue">—</div>
+        </div>
+      </div>
+
+      <div id="status" class="status muted">Idle</div>
+      <div class="hint">
+        iOS Safari: you must tap Start, then accept motion + location permissions when prompted.
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Export</h2>
+
+      <div class="row">
+        <button id="btnExportCurrent" disabled>Export current chunk</button>
+        <button id="btnExportSession" disabled>Export full session</button>
+      </div>
+
+      <div class="row">
+        <label class="checkbox">
+          <input type="checkbox" id="chkGzip" />
+          Gzip (.ndjson.gz) if supported
+        </label>
+      </div>
+
+      <div class="progressWrap">
+        <div class="progressBar"><div id="exportBar" class="progressFill" style="width:0%"></div></div>
+        <div id="exportText" class="muted">No export running</div>
+      </div>
+
+      <hr />
+
+      <h3>Storage</h3>
+      <div class="row">
+        <button id="btnClear" class="danger">Clear ALL local data</button>
+      </div>
+      <div class="muted small">
+        Clearing deletes IndexedDB data for this app. This is the only way to delete logs (per requirements).
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Diagnostics</h2>
+      <pre id="diag" class="pre">—</pre>
+    </section>
+  </main>
+
+  <footer class="wrap muted small">
+    NDJSON schema is flat, keys always present; missing values are null.
+  </footer>
+
+  <script type="module" src="js/ui.js"></script>
+</body>
+</html>
