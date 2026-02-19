@@ -18,7 +18,8 @@ export function makeLatestState() {
 
     // flags
     motion_ok: 0,
-    gps_ok: 0
+    gps_ok: 0,
+    motion_src: null
   };
 }
 
@@ -62,6 +63,7 @@ export function attachMotionAndOrientation(latestState) {
         latestState.ay_g = y;
         latestState.az_g = z;
         latestState.motion_ok = 1;
+        latestState.motion_src = "accelerometer";
       });
       accel.addEventListener("error", () => {});
       accel.start();
@@ -78,11 +80,13 @@ export function attachMotionAndOrientation(latestState) {
       latestState.ax = finiteOrNull(ag.x);
       latestState.ay = finiteOrNull(ag.y);
       latestState.az = finiteOrNull(ag.z);
+      latestState.motion_src = "devicemotion";
     } else if (!accel && a) {
       // Fallback if gravity-included acceleration is unavailable.
       latestState.ax = finiteOrNull(a.x);
       latestState.ay = finiteOrNull(a.y);
       latestState.az = finiteOrNull(a.z);
+      latestState.motion_src = "devicemotion";
     }
     if (!accel && ag) {
       latestState.ax_g = finiteOrNull(ag.x);
@@ -114,6 +118,7 @@ export function attachMotionAndOrientation(latestState) {
   return () => {
     try { accel?.stop(); } catch {}
     accel = null;
+    latestState.motion_src = null;
     window.removeEventListener("devicemotion", onMotion);
     window.removeEventListener("deviceorientation", onOrientation);
   };

@@ -193,6 +193,7 @@ function renderDiag(st) {
     achieved_hz: st.achieved_hz ?? null,
     wake_lock: st.wake_lock ?? null,
     motion_ok: latestState.motion_ok,
+    motion_src: latestState.motion_src || null,
     gps_ok: latestState.gps_ok,
     last_motion: {
       ax: latestState.ax, ay: latestState.ay, az: latestState.az,
