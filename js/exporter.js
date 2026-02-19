@@ -112,14 +112,10 @@ async function gzipBlob(blob, onProgress) {
   const total = blob.size;
   let processed = 0;
 
-  const stream = blob.stream();
-  const cs = new CompressionStream("gzip");
-  const out = stream.pipeThrough(cs);
-
-  // Track progress by tee-ing input stream
-  const [s1, s2] = stream.tee();
+  // Split a single source stream: one branch for compression, one for progress updates.
+  const [s1, s2] = blob.stream().tee();
   const reader = s2.getReader();
-  (async () => {
+  const progressTask = (async () => {
     try {
       while (true) {
         const { value, done } = await reader.read();
@@ -132,9 +128,9 @@ async function gzipBlob(blob, onProgress) {
     } catch {}
   })();
 
-  // Need to recompute with s1 (not original stream)
-  const out2 = s1.pipeThrough(new CompressionStream("gzip"));
-  const gzBlob = await new Response(out2).blob();
+  const gzBlob = await new Response(s1.pipeThrough(new CompressionStream("gzip"))).blob();
+  await progressTask;
+  onProgress({ percent: 100 });
   return gzBlob;
 }
 

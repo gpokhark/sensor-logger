@@ -50,7 +50,13 @@ export function attachMotionAndOrientation(latestState) {
     const ag = ev.accelerationIncludingGravity;
     const rr = ev.rotationRate;
 
-    if (a) {
+    // Primary accel channels should include gravity so stationary devices show ~9.8 m/s^2 on one axis.
+    if (ag) {
+      latestState.ax = finiteOrNull(ag.x);
+      latestState.ay = finiteOrNull(ag.y);
+      latestState.az = finiteOrNull(ag.z);
+    } else if (a) {
+      // Fallback if gravity-included acceleration is unavailable.
       latestState.ax = finiteOrNull(a.x);
       latestState.ay = finiteOrNull(a.y);
       latestState.az = finiteOrNull(a.z);
@@ -59,6 +65,10 @@ export function attachMotionAndOrientation(latestState) {
       latestState.ax_g = finiteOrNull(ag.x);
       latestState.ay_g = finiteOrNull(ag.y);
       latestState.az_g = finiteOrNull(ag.z);
+    } else if (a) {
+      latestState.ax_g = finiteOrNull(a.x);
+      latestState.ay_g = finiteOrNull(a.y);
+      latestState.az_g = finiteOrNull(a.z);
     }
     if (rr) {
       // Some browsers provide alpha/beta/gamma as deg/s

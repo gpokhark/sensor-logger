@@ -62,14 +62,42 @@ export async function getSession(sessionId) {
 }
 
 export async function getMostRecentUnfinishedSession() {
-  // simplest: scan sessions store and find active==1
+  // Scan sessions and return the newest active session by observed timestamp.
   return tx([STORE_SESSIONS], "readonly", ({ sessions }) => new Promise((resolve, reject) => {
-    const req = sessions.openCursor(null, "prev");
+    const req = sessions.openCursor();
+    let best = null;
+    let bestTs = -Infinity;
     req.onsuccess = () => {
       const cur = req.result;
-      if (!cur) return resolve(null);
+      if (!cur) return resolve(best);
       const v = cur.value;
-      if (v && v.active === 1) return resolve(v);
+      if (v && v.active === 1) {
+        const ts =
+          Number(v.last_sample_ms) ||
+          Date.parse(v.start_time_utc || "") ||
+          -Infinity;
+        if (ts > bestTs) {
+          bestTs = ts;
+          best = v;
+        }
+      }
+      cur.continue();
+    };
+    req.onerror = () => reject(req.error);
+  }));
+}
+
+export async function enforceSingleActiveSession(activeSessionId) {
+  return tx([STORE_SESSIONS], "readwrite", ({ sessions }) => new Promise((resolve, reject) => {
+    const req = sessions.openCursor();
+    req.onsuccess = () => {
+      const cur = req.result;
+      if (!cur) return resolve();
+      const v = cur.value || {};
+      const shouldBeActive = v.session_id === activeSessionId ? 1 : 0;
+      if ((v.active || 0) !== shouldBeActive) {
+        cur.update({ ...v, active: shouldBeActive });
+      }
       cur.continue();
     };
     req.onerror = () => reject(req.error);

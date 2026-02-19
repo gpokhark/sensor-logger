@@ -90,6 +90,8 @@ async function onStart() {
 async function onStop() {
   try {
     await logger.stop();
+    detachMotion?.();
+    detachMotion = null;
     geo?.stop?.();
     geo = null;
 
@@ -141,6 +143,10 @@ async function onClear() {
   if (!confirm("Delete ALL local sensor logs for this app? This cannot be undone.")) return;
   try {
     await logger.stop().catch(() => {});
+    detachMotion?.();
+    detachMotion = null;
+    geo?.stop?.();
+    geo = null;
     await clearAll();
     location.reload();
   } catch (e) {
