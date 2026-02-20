@@ -5,8 +5,6 @@ export function makeLatestState() {
   return {
     // motion (m/s^2)
     ax: null, ay: null, az: null,
-    // accel including gravity (m/s^2)
-    ax_g: null, ay_g: null, az_g: null,
     // gyro (rad/s on some browsers; deg/s on others). We log raw.
     gx: null, gy: null, gz: null,
     // device orientation (deg)
@@ -59,9 +57,6 @@ export function attachMotionAndOrientation(latestState) {
         latestState.ax = x;
         latestState.ay = y;
         latestState.az = z;
-        latestState.ax_g = x;
-        latestState.ay_g = y;
-        latestState.az_g = z;
         latestState.motion_ok = 1;
         latestState.motion_src = "accelerometer";
       });
@@ -87,15 +82,6 @@ export function attachMotionAndOrientation(latestState) {
       latestState.ay = finiteOrNull(a.y);
       latestState.az = finiteOrNull(a.z);
       latestState.motion_src = "devicemotion";
-    }
-    if (!accel && ag) {
-      latestState.ax_g = finiteOrNull(ag.x);
-      latestState.ay_g = finiteOrNull(ag.y);
-      latestState.az_g = finiteOrNull(ag.z);
-    } else if (!accel && a) {
-      latestState.ax_g = finiteOrNull(a.x);
-      latestState.ay_g = finiteOrNull(a.y);
-      latestState.az_g = finiteOrNull(a.z);
     }
     if (rr) {
       // Some browsers provide alpha/beta/gamma as deg/s
