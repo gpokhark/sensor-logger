@@ -20,7 +20,7 @@ export const NDJSON_KEYS_ORDER = [
   // session fields
   "session_id","chunk","sample_index","target_hz",
   // motion fields
-  "ax","ay","az","ax_g","ay_g","az_g",
+  "ax","ay","az",
   "gx","gy","gz",
   "alpha","beta","gamma",
   // gps fields

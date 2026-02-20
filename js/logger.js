@@ -311,7 +311,6 @@ export class SensorLogger {
 
     // motion/orientation
     out.ax = s.ax; out.ay = s.ay; out.az = s.az;
-    out.ax_g = s.ax_g; out.ay_g = s.ay_g; out.az_g = s.az_g;
     out.gx = s.gx; out.gy = s.gy; out.gz = s.gz;
     out.alpha = s.alpha; out.beta = s.beta; out.gamma = s.gamma;
 

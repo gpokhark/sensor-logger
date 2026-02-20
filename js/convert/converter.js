@@ -1,7 +1,7 @@
 const RECOMMENDED_ORDER = [
   "utc","epoch_ms","dt_ms",
   "session_id","chunk","sample_index","target_hz",
-  "ax","ay","az","ax_g","ay_g","az_g",
+  "ax","ay","az",
   "gx","gy","gz","alpha","beta","gamma",
   "lat","lon","gps_acc_m","speed_mps","heading_deg","alt_m",
   "device","platform","screen_w","screen_h",
@@ -19,13 +19,16 @@ export async function convertObjectsToCsv({
   const keysSet = new Set();
   const buffered = [];
   let rows = 0;
+  const iterator = objectsAsyncIterable[Symbol.asyncIterator]();
 
-  // buffer first N for schema
-  for await (const obj of objectsAsyncIterable) {
+  // Buffer first N rows for schema detection without closing the iterator.
+  for (let i = 0; i < detectLines; i++) {
     if (signal?.aborted) throw new Error("Cancelled");
+    const n = await iterator.next();
+    if (n.done) break;
+    const obj = n.value;
     buffered.push(obj);
     Object.keys(obj).forEach(k => keysSet.add(k));
-    if (buffered.length >= detectLines) break;
   }
   if (!buffered.length) throw new Error("No records found");
 
@@ -58,8 +61,11 @@ export async function convertObjectsToCsv({
 
   buffered.forEach(handle);
 
-  for await (const obj of objectsAsyncIterable) {
+  while (true) {
     if (signal?.aborted) throw new Error("Cancelled");
+    const n = await iterator.next();
+    if (n.done) break;
+    const obj = n.value;
     handle(obj);
 
     if (rows % 5000 === 0) {

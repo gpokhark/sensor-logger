@@ -43,9 +43,6 @@ Column order in NDJSON and CSV:
 | `ax` | Linear acceleration X (no gravity) | m/s^2 |
 | `ay` | Linear acceleration Y (no gravity) | m/s^2 |
 | `az` | Linear acceleration Z (no gravity) | m/s^2 |
-| `ax_g` | Acceleration X including gravity | m/s^2 |
-| `ay_g` | Acceleration Y including gravity | m/s^2 |
-| `az_g` | Acceleration Z including gravity | m/s^2 |
 | `gx` | Rotation rate around X axis | deg/s |
 | `gy` | Rotation rate around Y axis | deg/s |
 | `gz` | Rotation rate around Z axis | deg/s |
