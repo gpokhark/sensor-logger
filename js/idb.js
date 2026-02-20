@@ -133,19 +133,27 @@ export async function iterBatchesByChunk(sessionId, chunkIndex, onBatch) {
     const idx = store.index("by_session_chunk");
     const range = IDBKeyRange.only([sessionId, chunkIndex]);
     const req = idx.openCursor(range);
+    const rows = [];
 
-    req.onsuccess = async () => {
+    req.onsuccess = () => {
       const cur = req.result;
-      if (!cur) return resolve();
+      if (!cur) return;
+      rows.push(cur.value);
+      cur.continue();
+    };
+    req.onerror = () => reject(req.error);
+    t.oncomplete = async () => {
       try {
-        await onBatch(cur.value);
-        cur.continue();
+        for (const row of rows) {
+          await onBatch(row);
+        }
+        resolve();
       } catch (e) {
-        try { t.abort(); } catch {}
         reject(e);
       }
     };
-    req.onerror = () => reject(req.error);
+    t.onerror = () => reject(t.error);
+    t.onabort = () => reject(t.error || new Error("Transaction aborted"));
   });
 }
 
