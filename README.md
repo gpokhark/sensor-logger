@@ -1,6 +1,77 @@
 # Mobile Sensor Logger (Web-Based)
+Live App: https://gpokhark.github.io/sensor-logger/  
+CSV Converter: https://gpokhark.github.io/sensor-logger/convert.html
 
 Static GitHub Pages app. No backend. Fully client-side logging.
+
+---
+
+## Live Web App
+
+**Sensor Logger (Live App)**
+[https://gpokhark.github.io/sensor-logger/](https://gpokhark.github.io/sensor-logger/)
+
+Open the link in **Google Chrome on your phone**.
+
+When prompted, grant permission for:
+
+* Motion & orientation (accelerometer / gyroscope)
+* Location (GPS)
+
+Without these permissions, sensor values will remain `null` and logging will be incomplete.
+
+For vehicle data collection, the device must be **rigidly mounted to the vehicle structure** before starting a session. Handheld use or loose mounting will introduce significant motion artifacts and invalidate measurements.
+
+---
+
+## CSV Converter (Live)
+
+Exported `.ndjson`, `.gz`, or `.ndjson.gz` files can be converted to CSV using:
+
+[https://gpokhark.github.io/sensor-logger/convert.html](https://gpokhark.github.io/sensor-logger/convert.html)
+
+Open the page, upload the exported file, and download the generated CSV.
+
+By default, exported files are saved in the **Downloads folder of your browser/device**.
+
+---
+
+## Research Notice
+
+This tool is intended for **quick research, prototyping, and exploratory data collection only**.
+
+It is not a certified measurement instrument and must not be used for safety-critical, regulatory, medical, or production-grade applications.
+
+Sensor timing, accuracy, and stability depend entirely on the browser, operating system, and device hardware.
+
+If you use this tool in academic work, technical reports, theses, or publications, you are responsible for providing appropriate citation to this repository.
+
+If this project is useful, please consider starring the repository. Feedback, issue reports, and technical suggestions are welcome.
+
+---
+
+## Recommended Citation
+
+If you use this tool in academic or research work, please cite the repository.
+
+### BibTeX
+
+```bibtex
+@misc{mobile_sensor_logger_web,
+  author       = {Pokharkar, Gaurav},
+  title        = {Mobile Sensor Logger (Web-Based)},
+  year         = {2026},
+  howpublished = {\url{https://github.com/gpokhark/sensor-logger}},
+  note         = {Client-side mobile sensor logging tool for quick research and prototyping}
+}
+```
+
+---
+
+### Plain Text (IEEE Format)
+
+G. Pokharkar, *Mobile Sensor Logger (Web-Based)*, 2026. [Online]. Available: [https://github.com/gpokhark/sensor-logger](https://github.com/gpokhark/sensor-logger)
+
 
 ## What it does
 - Samples a `latestState` updated by sensor events:
@@ -82,12 +153,14 @@ Converter behavior:
 - Optional preview shows the first 50 rows.
 - `.ndjson.gz` input requires browser `DecompressionStream` support.
 
-## Deploy
-- Push this folder to GitHub.
-- Enable GitHub Pages from repository settings (deploy from main branch).
-
 ## Known limitations (browser reality)
 - True 100 Hz precision is not guaranteed.
 - Background logging stability is not guaranteed.
 - GPS frequency is typically around 1 Hz (or lower).
 - Thermal throttling can reduce sampling rate.
+
+## Author
+
+**Gaurav Pokharkar**  
+Developer and Maintainer  
+GitHub: https://github.com/gpokhark
