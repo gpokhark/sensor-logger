@@ -55,15 +55,24 @@ export function utcStamp(ms) {
 }
 
 export function makeSessionId() {
-  // short, URL-safe
-  const bytes = crypto.getRandomValues(new Uint8Array(12));
-  const b64 = btoa(String.fromCharCode(...bytes)).replaceAll("+","-").replaceAll("/","_").replaceAll("=","");
-  return "s_" + b64;
+  // UTC timestamp session id: YYYYMMDDTHHMMSSmmmZ
+  const d = new Date();
+  return (
+    d.getUTCFullYear() +
+    pad2(d.getUTCMonth() + 1) +
+    pad2(d.getUTCDate()) +
+    "T" +
+    pad2(d.getUTCHours()) +
+    pad2(d.getUTCMinutes()) +
+    pad2(d.getUTCSeconds()) +
+    pad3(d.getUTCMilliseconds()) +
+    "Z"
+  );
 }
 
 export function chunkFileName({ sessionId, chunkIndex, createdMs, gzip }) {
   const nn = String(chunkIndex).padStart(2, "0");
   const stamp = utcStamp(createdMs);
-  const base = `session_${sessionId}_chunk${nn}_${stamp}.ndjson`;
+  const base = `${sessionId}_chunk${nn}_${stamp}.ndjson`;
   return gzip ? `${base}.gz` : base;
 }
