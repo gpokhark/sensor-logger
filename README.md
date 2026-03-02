@@ -20,7 +20,7 @@ When prompted, grant permission for:
 
 Without these permissions, sensor values will remain `null` and logging will be incomplete.
 
-For vehicle data collection, the device must be **rigidly mounted to the vehicle structure** before starting a session. Handheld use or loose mounting will introduce significant motion artifacts and invalidate measurements.
+For vehicle data collection, the device must be **rigidly mounted to the vehicle structure** before starting a session. Handheld use or loose mounting will introduce significant motion artifacts and invalidate measurements. A rigid headrest-mounted 3D-printable option can be found here - [Printable Link](https://www.printables.com/model/1614760-backseat-ceo-the-headrest-phone-mount-that-means-b/files). Any mounting solution is acceptable as long as it provides a stable, vibration-resistant mechanical connection to the vehicle structure.
 
 ---
 
