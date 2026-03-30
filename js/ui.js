@@ -2,6 +2,7 @@ import { SensorLogger } from "./logger.js";
 import { attachMotionAndOrientation, attachGeolocation, ensureMotionPermissionIfNeeded, ensureOrientationPermissionIfNeeded, ensureGeoPermissionIfNeeded } from "./sensors.js";
 import { clearAll } from "./idb.js";
 import { exportChunk, exportSession } from "./exporter.js";
+import { LABEL_MIN, LABEL_MAX, LABEL_DRAFT_STORAGE_KEY, DEFAULT_LABEL_CONFIG } from "./constants.js";
 
 const el = {
   targetHz: document.getElementById("targetHz"),
@@ -27,6 +28,13 @@ const el = {
   btnOpenConverter: document.getElementById("btnOpenConverter"),
   converterLink: document.getElementById("converterLink"),
 
+  labelSetupCard: document.getElementById("labelSetupCard"),
+  labelInputList: document.getElementById("labelInputList"),
+  btnAddLabel: document.getElementById("btnAddLabel"),
+  liveLabelCard: document.getElementById("liveLabelCard"),
+  activeLabelDisplay: document.getElementById("activeLabelDisplay"),
+  labelButtons: document.getElementById("labelButtons"),
+  btnClearLabel: document.getElementById("btnClearLabel"),
 };
 
 const logger = new SensorLogger({ onState: onLoggerState });
@@ -39,10 +47,19 @@ let liveDiagTimer = null;
 boot().catch(showErr);
 
 async function boot() {
+  // Load label draft from localStorage
+  const draftConfig = loadLabelDraft();
+  renderLabelSetupInputs(draftConfig);
+
   const restored = await logger.restoreIfNeeded();
   if (restored) {
     el.status.textContent = "Restored unfinished session (press Start to continue)";
     el.targetHz.value = String(restored.target_hz);
+    // Re-render setup inputs as read-only with the frozen session config
+    renderLabelSetupInputs(restored.label_config);
+    freezeLabelSetup(true);
+    renderLiveLabelButtons(restored.label_config);
+    refreshLabelUi();
     refreshUi(logger.getPublicState());
     enableExportsIfPossible(logger.getPublicState());
   } else {
@@ -56,7 +73,13 @@ async function boot() {
   el.btnExportSession.addEventListener("click", onExportSession);
 
   el.btnClear.addEventListener("click", onClear);
-  
+
+  el.btnAddLabel.addEventListener("click", onAddLabel);
+  el.btnClearLabel.addEventListener("click", () => {
+    logger.clearActiveLabel();
+    refreshLabelUi();
+  });
+
   if (el.btnOpenConverter && el.converterLink) {
     const converterUrl = new URL("convert.html", location.href).toString();
     el.converterLink.href = converterUrl;
@@ -79,6 +102,15 @@ async function onStart() {
   try {
     const targetHz = Number(el.targetHz.value);
 
+    // Build and validate label config (only for new sessions; restored sessions keep existing config)
+    let labelConfig;
+    if (!logger.session) {
+      labelConfig = buildLabelConfig();
+      const err = validateLabelConfig(labelConfig);
+      if (err) { showErr(new Error(err)); return; }
+      saveLabelDraft(labelConfig);
+    }
+
     // iOS permission prompts must be called from user gesture.
     await ensureMotionPermissionIfNeeded();
     await ensureOrientationPermissionIfNeeded();
@@ -93,8 +125,16 @@ async function onStart() {
     geo.start().catch(() => {});
 
     const deviceInfo = getDeviceInfo();
-    await logger.start({ targetHz, deviceInfo });
+    await logger.start({ targetHz, deviceInfo, labelConfig: labelConfig ?? logger.getLabelUiState().labelConfig });
 
+    // Freeze setup and render live buttons for new sessions
+    if (labelConfig) {
+      freezeLabelSetup(true);
+      renderLiveLabelButtons(labelConfig);
+    }
+
+    setLabelButtonsEnabled(true);
+    refreshLabelUi();
     refreshUi(logger.getPublicState());
     enableExportsIfPossible(logger.getPublicState());
 
@@ -111,6 +151,8 @@ async function onStop() {
     // Keep passive preview running at idle so live values remain visible.
     startPassiveSensorPreview();
 
+    setLabelButtonsEnabled(false);
+    refreshLabelUi();
     refreshUi(logger.getPublicState());
     enableExportsIfPossible(logger.getPublicState());
 
@@ -175,6 +217,7 @@ function onLoggerState(state) {
   refreshUi(state);
   enableExportsIfPossible(state);
   renderDiag(state);
+  refreshLabelUi();
 }
 
 function startPassiveSensorPreview() {
@@ -267,6 +310,154 @@ function setExportUi(percent, text) {
   el.exportBar.style.width = `${Math.max(0, Math.min(100, percent))}%`;
   el.exportText.textContent = text;
 }
+
+// ── Label helpers ──────────────────────────────────────────────────────────
+
+function loadLabelDraft() {
+  try {
+    const raw = localStorage.getItem(LABEL_DRAFT_STORAGE_KEY);
+    if (!raw) return DEFAULT_LABEL_CONFIG;
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed) && parsed.length >= LABEL_MIN && parsed.length <= LABEL_MAX) {
+      return parsed;
+    }
+  } catch {}
+  return DEFAULT_LABEL_CONFIG;
+}
+
+function saveLabelDraft(config) {
+  try {
+    localStorage.setItem(LABEL_DRAFT_STORAGE_KEY, JSON.stringify(config));
+  } catch {}
+}
+
+function buildLabelConfig() {
+  const inputs = el.labelInputList.querySelectorAll(".labelNameInput");
+  return [...inputs].map((inp, i) => ({
+    id: `label_${i + 1}`,
+    name: inp.value.trim(),
+    position: i + 1
+  }));
+}
+
+function validateLabelConfig(config) {
+  if (config.length < LABEL_MIN || config.length > LABEL_MAX) {
+    return `Need between ${LABEL_MIN} and ${LABEL_MAX} labels.`;
+  }
+  for (const entry of config) {
+    if (!entry.name) return "All label names must be non-empty.";
+  }
+  return null;
+}
+
+function renderLabelSetupInputs(config) {
+  el.labelInputList.innerHTML = "";
+  for (let i = 0; i < config.length; i++) {
+    el.labelInputList.appendChild(makeLabelInputRow(config[i].name, i));
+  }
+  updateAddLabelBtn();
+}
+
+function makeLabelInputRow(name, index) {
+  const row = document.createElement("div");
+  row.className = "labelInputRow";
+  row.dataset.index = index;
+
+  const inp = document.createElement("input");
+  inp.type = "text";
+  inp.className = "labelNameInput";
+  inp.value = name;
+  inp.maxLength = 40;
+  inp.placeholder = `Label ${index + 1}`;
+
+  const removeBtn = document.createElement("button");
+  removeBtn.type = "button";
+  removeBtn.textContent = "Remove";
+  removeBtn.className = "secondary";
+  removeBtn.addEventListener("click", () => onRemoveLabel(index));
+
+  row.appendChild(inp);
+  row.appendChild(removeBtn);
+  return row;
+}
+
+function updateAddLabelBtn() {
+  const count = el.labelInputList.querySelectorAll(".labelInputRow").length;
+  el.btnAddLabel.disabled = count >= LABEL_MAX;
+  // Hide Remove buttons when at minimum
+  el.labelInputList.querySelectorAll(".labelInputRow button").forEach(btn => {
+    btn.style.display = count <= LABEL_MIN ? "none" : "";
+  });
+}
+
+function onAddLabel() {
+  const count = el.labelInputList.querySelectorAll(".labelInputRow").length;
+  if (count >= LABEL_MAX) return;
+  el.labelInputList.appendChild(makeLabelInputRow("", count));
+  updateAddLabelBtn();
+}
+
+function onRemoveLabel(index) {
+  const rows = el.labelInputList.querySelectorAll(".labelInputRow");
+  if (rows.length <= LABEL_MIN) return;
+  rows[index].remove();
+  // Re-index remaining rows
+  el.labelInputList.querySelectorAll(".labelInputRow").forEach((row, i) => {
+    row.dataset.index = i;
+    const inp = row.querySelector(".labelNameInput");
+    inp.placeholder = `Label ${i + 1}`;
+    const btn = row.querySelector("button");
+    btn.onclick = () => onRemoveLabel(i);
+  });
+  updateAddLabelBtn();
+}
+
+function freezeLabelSetup(frozen) {
+  el.labelInputList.querySelectorAll(".labelNameInput").forEach(inp => {
+    inp.disabled = frozen;
+  });
+  el.labelInputList.querySelectorAll(".labelInputRow button").forEach(btn => {
+    btn.disabled = frozen;
+  });
+  el.btnAddLabel.disabled = frozen;
+}
+
+function renderLiveLabelButtons(config) {
+  el.labelButtons.innerHTML = "";
+  for (const entry of config) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "labelBtn";
+    btn.textContent = entry.name;
+    btn.dataset.labelId = entry.id;
+    btn.disabled = true;
+    btn.addEventListener("click", () => {
+      logger.setActiveLabel(entry.id);
+      refreshLabelUi();
+    });
+    el.labelButtons.appendChild(btn);
+  }
+}
+
+function setLabelButtonsEnabled(enabled) {
+  el.labelButtons.querySelectorAll(".labelBtn").forEach(btn => {
+    btn.disabled = !enabled;
+  });
+  el.btnClearLabel.disabled = !enabled;
+}
+
+function refreshLabelUi() {
+  const { activeLabelId, activeLabelName } = logger.getLabelUiState();
+  el.labelButtons.querySelectorAll(".labelBtn").forEach(btn => {
+    btn.classList.toggle("active", btn.dataset.labelId === activeLabelId);
+  });
+  el.activeLabelDisplay.textContent = activeLabelName ?? "No active label";
+  if (logger.running) {
+    el.btnClearLabel.disabled = !activeLabelId;
+  }
+}
+
+// ── End label helpers ──────────────────────────────────────────────────────
 
 function getDeviceInfo() {
   const device = "web";

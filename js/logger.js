@@ -3,6 +3,7 @@ import {
   FLUSH_EVERY_MS,
   FLUSH_EVERY_SAMPLES,
   CHUNK_MS,
+  LABEL_SCHEMA_VERSION,
   isoUtc,
   makeSessionId
 } from "./constants.js";
@@ -34,6 +35,14 @@ export class SensorLogger {
 
     this.wakeLockSentinel = null;
     this.wake_lock_flag = 0;
+
+    // Label state
+    this._labelConfig = [];
+    this._activeLabelId = null;
+    this._activeLabelName = null;
+    this._activeLabelStartedMs = null;
+    this._activeLabelStartedUtc = null;
+    this._activeLabelSegmentIndex = 0;
   }
 
   async restoreIfNeeded() {
@@ -49,21 +58,38 @@ export class SensorLogger {
     this._lastSampleMs = s.last_sample_ms ?? null;
     this._batchStartSampleIndex = (s.current_sample_index ?? 0) + 1;
 
+    // Hydrate label state
+    this._labelConfig              = s.label_config ?? [];
+    this._activeLabelId            = s.active_label_id ?? null;
+    this._activeLabelName          = s.active_label_name ?? null;
+    this._activeLabelStartedMs     = s.active_label_started_ms ?? null;
+    this._activeLabelStartedUtc    = s.active_label_started_utc ?? null;
+    this._activeLabelSegmentIndex  = s.active_label_segment_index ?? 0;
+
     this._emitState("Restored unfinished session");
     return {
       session_id: s.session_id,
       target_hz: s.target_hz,
       chunk_index: s.current_chunk_index,
-      row_count: chunk.row_count || 0
+      row_count: chunk.row_count || 0,
+      label_config: this._labelConfig,
+      active_label_id: this._activeLabelId
     };
   }
 
-  async start({ targetHz, deviceInfo }) {
+  async start({ targetHz, deviceInfo, labelConfig = [] }) {
     if (this.running) return;
 
     const now = Date.now();
     if (!this.session) {
       const sessionId = makeSessionId();
+      this._labelConfig             = labelConfig;
+      this._activeLabelId           = null;
+      this._activeLabelName         = null;
+      this._activeLabelStartedMs    = null;
+      this._activeLabelStartedUtc   = null;
+      this._activeLabelSegmentIndex = 0;
+
       this.session = {
         session_id: sessionId,
         start_time_utc: isoUtc(now),
@@ -75,7 +101,14 @@ export class SensorLogger {
         active: 1,
         current_chunk_index: 1,
         current_sample_index: 0,
-        last_sample_ms: null
+        last_sample_ms: null,
+        label_schema_version: LABEL_SCHEMA_VERSION,
+        label_config: labelConfig,
+        active_label_id: null,
+        active_label_name: null,
+        active_label_started_ms: null,
+        active_label_started_utc: null,
+        active_label_segment_index: 0
       };
 
       await putSession(this.session);
@@ -177,6 +210,46 @@ export class SensorLogger {
     this._emitState(`Flushed ${added} records`);
   }
 
+  setActiveLabel(labelId) {
+    const entry = this._labelConfig.find(l => l.id === labelId);
+    if (!entry) return;
+    const now = Date.now();
+    this._activeLabelId            = entry.id;
+    this._activeLabelName          = entry.name;
+    this._activeLabelSegmentIndex += 1;
+    this._activeLabelStartedMs     = now;
+    this._activeLabelStartedUtc    = isoUtc(now);
+    this._persistLabelStateToSession();
+    this._emitState("Label: " + entry.name);
+  }
+
+  clearActiveLabel() {
+    this._activeLabelId          = null;
+    this._activeLabelName        = null;
+    this._activeLabelStartedMs   = null;
+    this._activeLabelStartedUtc  = null;
+    this._persistLabelStateToSession();
+    this._emitState("Label cleared");
+  }
+
+  getLabelUiState() {
+    return {
+      labelConfig: this._labelConfig,
+      activeLabelId: this._activeLabelId,
+      activeLabelName: this._activeLabelName
+    };
+  }
+
+  _persistLabelStateToSession() {
+    if (!this.session) return;
+    this.session.active_label_id            = this._activeLabelId;
+    this.session.active_label_name          = this._activeLabelName;
+    this.session.active_label_started_ms    = this._activeLabelStartedMs;
+    this.session.active_label_started_utc   = this._activeLabelStartedUtc;
+    this.session.active_label_segment_index = this._activeLabelSegmentIndex;
+    putSession(this.session).catch(() => {});
+  }
+
   getLatestStateRef() {
     return this.latestState;
   }
@@ -194,7 +267,9 @@ export class SensorLogger {
       chunk_index: this.session.current_chunk_index,
       rows_in_chunk: this.session.current_sample_index,
       achieved_hz: achievedHz,
-      wake_lock: this.wake_lock_flag
+      wake_lock: this.wake_lock_flag,
+      active_label_id: this._activeLabelId,
+      active_label_name: this._activeLabelName
     };
   }
 
@@ -308,6 +383,13 @@ export class SensorLogger {
     out.sample_index = (session.current_sample_index || 0) + this._batchBuffer.length + 1;
     out.target_hz = session.target_hz;
     out.dt_ms = dtMs;
+
+    // label fields
+    out.label_id            = this._activeLabelId;
+    out.label_name          = this._activeLabelName;
+    out.label_segment_index = this._activeLabelId !== null ? this._activeLabelSegmentIndex : null;
+    out.label_started_utc   = this._activeLabelStartedUtc;
+    out.label_started_ms    = this._activeLabelStartedMs;
 
     // motion/orientation
     out.ax = s.ax; out.ay = s.ay; out.az = s.az;

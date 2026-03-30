@@ -1,6 +1,7 @@
 const RECOMMENDED_ORDER = [
   "utc","epoch_ms","dt_ms",
   "session_id","chunk","sample_index","target_hz",
+  "label_id","label_name","label_segment_index","label_started_utc","label_started_ms",
   "ax","ay","az",
   "gx","gy","gz","alpha","beta","gamma",
   "lat","lon","gps_acc_m","speed_mps","heading_deg","alt_m",

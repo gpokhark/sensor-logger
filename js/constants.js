@@ -13,12 +13,26 @@ export const EXPORT_SEGMENT_TARGET_BYTES = 2 * 1024 * 1024; // ~2MB segments
 
 export const TARGET_HZ_OPTIONS = [5, 50, 100];
 
+export const LABEL_MIN = 4;
+export const LABEL_MAX = 6;
+export const LABEL_SCHEMA_VERSION = 1;
+export const LABEL_DRAFT_STORAGE_KEY = "sensor_logger_label_draft";
+
+export const DEFAULT_LABEL_CONFIG = [
+  { id: "label_1", name: "Lane Change Left",  position: 1 },
+  { id: "label_2", name: "Lane Change Right", position: 2 },
+  { id: "label_3", name: "Left Turn",         position: 3 },
+  { id: "label_4", name: "Right Turn",        position: 4 }
+];
+
 // Flat, strict schema: keys always present (nullable where unavailable).
 export const NDJSON_KEYS_ORDER = [
   // time fields
   "utc","epoch_ms","dt_ms",
   // session fields
   "session_id","chunk","sample_index","target_hz",
+  // label fields
+  "label_id","label_name","label_segment_index","label_started_utc","label_started_ms",
   // motion fields
   "ax","ay","az",
   "gx","gy","gz",
